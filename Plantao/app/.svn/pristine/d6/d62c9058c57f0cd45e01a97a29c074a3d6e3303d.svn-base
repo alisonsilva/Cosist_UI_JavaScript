@@ -1,0 +1,139 @@
+Ext.define('Plantao.view.login.LoginController', {
+    extend: 'Ext.app.ViewController',
+    alias: 'controller.login',
+
+    onLoginClick: function() {
+        var me = this;
+        var usr = Ext.ComponentQuery.query('#txtUserName')[0].getValue();
+        var pssword = Ext.ComponentQuery.query('#txtSenha')[0].getValue();
+        
+        Plantao.util.JsonPUtil.autenticaUsuario(usr, pssword, { onAutenticaSuccess: function(result){
+            var infoRetornoUsuario = result.infoRetornoUsuario;
+            var codigoLogin = infoRetornoUsuario.codigo;
+            var mensagem = infoRetornoUsuario.mensagem;
+            
+            var loginForm = Ext.ComponentQuery.query('#formLogin')[0];
+            if(loginForm && loginForm.getEl()) {
+                loginForm.getEl().mask();
+            }
+            
+            if(codigoLogin === 0) {
+                Plantao.util.JsonPUtil.usuario = Ext.ComponentQuery.query('#txtUserName')[0].getValue();
+                Plantao.util.JsonPUtil.senha   = Ext.ComponentQuery.query('#txtSenha')[0].getValue();
+                localStorage.setItem('matricula', Plantao.util.JsonPUtil.usuario);
+            
+				var usuario = infoRetornoUsuario.usuario;
+                Plantao.util.JsonPUtil.executaChamada(
+                    'https://tjdf199.tjdft.jus.br/cosist/servicos/plantao/sorteio/ultimoSorteioValido',
+                    null,
+                    {executaChamadaSuccess : function(result1, obj){
+                        var infoUC = result1.infoRetornoSorteioPlantao;
+                        var codigoUC = infoUC.codigo;
+                        var mensagemUC = infoUC.mensagem;
+                        var matricula = localStorage.getItem('matricula');
+                        if(codigoUC == 0) {
+                            var sorteio = infoUC.ultimoSorteioValido;                            
+					
+							if(loginForm && loginForm.getEl()) {
+								loginForm.getEl().unmask();
+							}            
+                            me.montaPagina(usuario, sorteio);
+                        } else {
+                            if(loginForm && loginForm.getEl()) {
+                                loginForm.getEl().unmask();
+                            }            
+                            Plantao.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao recuperar escalas: ' + mensagemUC, Ext.Msg.Error, function(){ });
+                        }
+                    }, executaChamadaError: function(obj){
+                        if(loginForm && loginForm.getEl()) {
+                            loginForm.getEl().unmask();
+                        }            
+                        Plantao.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao executar chamada', Ext.Msg.ERROR, function(){});                        
+                    }
+                }); 
+            } else if(codigoLogin === 13) {
+                if(loginForm && loginForm.getEl()) {
+                    loginForm.getEl().unmask();
+                }            
+                Plantao.util.DeviceUtil.showAlertaConfirma('Aviso', 'O usuário está inativado', Ext.Msg.WARNING, function(){ });                
+            } else {
+                if(loginForm && loginForm.getEl()) {
+                    loginForm.getEl().unmask();
+                }            
+                Plantao.util.DeviceUtil.showAlertaConfirma('Aviso', 'Usuário ou senha inválido', Ext.Msg.WARNING, function(){ });
+            }
+        }, onAutenticaUsuarioError : function(){
+            Plantao.util.DeviceUtil.showAlertaConfirma('Aviso', 'Erro ao executar autenticação', Ext.Msg.WARNING, function(){ });
+        }});
+    },
+    
+    passwordKeyPressed : function(passwd, e, eo) {
+        if(e.getCharCode() == Ext.EventObject.ENTER) {
+            this.onLoginClick();
+        }
+    },
+    
+    montaPagina : function(usuario, sorteio) {
+        var me = this;
+        var sorteioId = null;
+        
+        if (!sorteio) {    
+            Plantao.util.DeviceUtil.showAlertaConfirma('Aviso', 'Não há sorteio válido', Ext.Msg.Warning, function(){ });
+        } else {
+//            localStorage.setItem('concursoId', concurso.concursoId);
+//            localStorage.setItem('processoConcurso', concurso.numProcesso);
+//            concursoId = concurso.concursoId;
+			sorteioId = sorteio.id;
+        }
+        Plantao.util.JsonPUtil.grupos = [];
+        if (usuario != null) {
+            var idx = 0;
+            Ext.each(usuario.grupos, function(grupo) {
+                var grp = {nome: grupo.nome};
+                Ext.Array.include(Plantao.util.JsonPUtil.grupos, grp);
+            });
+        }       
+        localStorage.setItem('nome_usuario', usuario.nome);
+        Ext.tip.QuickTipManager.init();
+
+        // Remove Login Window
+        me.getView().destroy();
+
+        // Add the main view to the viewport
+        var mainView = Ext.create({
+            xtype: 'app-main'
+        });
+        
+        Plantao.util.DeviceUtil.setCabecalho();
+        
+        var center = Ext.ComponentQuery.query('#main-center')[0];
+
+        var isSecretariaAdmin = Plantao.util.DeviceUtil.isInGrupo(Plantao.util.JsonPUtil.grupos, ['Corregedoria_Plantao']);
+
+        if(isSecretariaAdmin) {
+            var admin = Ext.create('Plantao.view.administracao.Administracao');
+			var sorteio = Ext.create('Plantao.view.sorteio.Sorteio');
+            center.add(admin);
+			center.add(sorteio);
+        }
+        if(sorteioId > 0) {
+			/*
+            var setores = Ext.create('Plantao.view.setor.Setor');
+            center.add(setores);
+            if(isOficial) {
+                var reservas = Ext.create('Plantao.view.reserva.Reserva');
+                center.add(reservas);
+            }
+			if(concurso.hasSorteioValido) {
+				var sorteio = Ext.create('Plantao.view.resultado.ResultadoSorteio');
+				center.add(sorteio);
+			}
+            var ranking = Ext.create('Plantao.view.ranking.Ranking');
+            center.add(ranking);                            
+			*/
+        } 
+
+        center.doLayout();
+    
+    }
+});

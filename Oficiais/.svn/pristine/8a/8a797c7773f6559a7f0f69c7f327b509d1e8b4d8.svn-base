@@ -1,0 +1,181 @@
+Ext.define('Oficiais.view.sorteio.SorteioController', {
+    extend: 'Ext.app.ViewController',
+    alias: 'controller.sorteiocontroller',
+    requires: [
+        'Ext.window.Window'    
+    ],
+
+    onRowClick: function( row, record, tr, rowIndex, e, eOpts ){
+        var me = this;
+        var win2 = Ext.create('Ext.window.Window', {
+            height: 650,
+            width: 1100,
+            x: 200,
+            y: 100,
+            title: 'Resultado do sorteio',
+            closable: true,
+            plain: true,
+            modal: true,
+            layout: 'fit',
+            items: [Ext.create('Oficiais.view.resultado.ResultadoSorteio')]
+        });
+        win2.show();          
+    },
+    
+    onNovoSorteioClick : function() {
+        var me = this;
+        var nomeUsuario = localStorage.getItem("nome_usuario");
+        var matricula = localStorage.getItem("matricula");
+        
+        var gridConc = Ext.ComponentQuery.query('#gridAdministracao')[0];
+        var concursoRecord = gridConc.getSelectionModel().getSelection()[0];
+        var concursoId = concursoRecord.get('concursoId');
+        
+        var objReq = {matriculaUsuario: matricula, 
+                      passwd: Oficiais.util.JsonPUtil.senha, 
+                      sorteios: [{concursoId: concursoId, matriculaUsuario: matricula, nomeUsuario: nomeUsuario}]};
+        
+        var viewSorteio = Ext.getCmp('viewSorteio');
+        if(viewSorteio) {
+            viewSorteio.getEl().mask('Realizando sorteio...');
+        }
+        
+        Oficiais.util.JsonPUtil.executaChamadaPostObjeto('https://tjdf199.tjdft.jus.br/cosist/servicos/oficiaisjustica/dadosbasicos/realizaSorteio'
+                    , objReq, null, {executaChamadaSuccess : function(result, obj){
+                        if(viewSorteio) {
+                            viewSorteio.getEl().unmask();
+                        }
+                        
+                        var info = result.infoRetornoOficiaisJustica;
+                        var codigo = info.codigo;
+                        var mensagem = info.mensagem;
+                        if(codigo != 0) {
+                            Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao realizar sorteio: ' + mensagem, Ext.Msg.ERROR, function(){});
+                        } else {
+                            me.evtRendering(null);
+                        }                        
+                    }, executaChamadaError : function(){
+                        if(viewSorteio) {
+                            viewSorteio.getEl().unmask();
+                        }
+                        Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao executar chamada', Ext.Msg.ERROR, function(){});
+                    }
+        });         
+    },
+    
+    onVisualizarSorteioCkick : function() {
+        var me = this;
+        var win2 = Ext.create('Ext.window.Window', {
+            height: 650,
+            width: 1100,
+            x: 200,
+            y: 100,
+            title: 'Resultado do sorteio',
+            closable: true,
+            plain: true,
+            modal: true,
+            layout: 'fit',
+            items: [Ext.create('Oficiais.view.resultado.ResultadoSorteio')]
+        });
+        win2.show();    
+    }, 
+    
+    onChangeFlValido : function(dtfield, rowIndex, checked, eOpts) {
+    },    
+    
+    onChangeFlPublico : function(dtfield, rowIndex, checked, eOpts) {
+        var grid = Ext.ComponentQuery.query('#gridSorteio')[0];
+        var record = grid.getStore().getAt(rowIndex);
+
+        var me = this;
+        var nomeUsuario = localStorage.getItem("nome_usuario");
+        var matricula = localStorage.getItem("matricula");
+        
+        var objReq = {matriculaUsuario: matricula, 
+                      passwd: Oficiais.util.JsonPUtil.senha, 
+                      sorteio: {concursoId: record.get('concursoId'), sorteioId: record.get('sorteioId'), flPublicado: checked}};
+        
+        var viewSorteio = Ext.getCmp('viewSorteio');
+        if(viewSorteio) {
+            viewSorteio.getEl().mask();
+        }
+        
+        Oficiais.util.JsonPUtil.executaChamadaPostObjeto('https://tjdf199.tjdft.jus.br/cosist/servicos/oficiaisjustica/dadosbasicos/publicaSorteio'
+                    , objReq, null, {executaChamadaSuccess : function(result, obj){
+                        if(viewSorteio) {
+                            viewSorteio.getEl().unmask();
+                        }
+                        
+                        var info = result.infoRetornoOficiaisJustica;
+                        var codigo = info.codigo;
+                        var mensagem = info.mensagem;
+                        if(codigo != 0) {
+                            record.reject();
+                            Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', mensagem, Ext.Msg.ERROR, function(){});
+                        } else {
+                            record.commit();
+                        }                        
+                    }, executaChamadaError : function(){
+                        if(viewSorteio) {
+                            viewSorteio.getEl().unmask();
+                        }
+                        Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao executar chamada', Ext.Msg.ERROR, function(){});
+                    }
+        });             
+    },
+    
+    evtRendering : function(view) {
+        var gridConc = Ext.ComponentQuery.query('#gridAdministracao')[0];
+        var concursoRecord = gridConc.getSelectionModel().getSelection()[0];
+    
+        var viewSorteio = Ext.getCmp('viewSorteio');
+        if(viewSorteio) {
+            viewSorteio.getEl().mask('Recuperando sorteios...');
+        }
+        Oficiais.util.JsonPUtil.executaChamada(
+            'https://tjdf199.tjdft.jus.br/cosist/servicos/oficiaisjustica/dadosbasicos/concursoporid/' + concursoRecord.get('concursoId'),
+            null,
+            {executaChamadaSuccess : function(result, obj){
+                if(viewSorteio) {
+                    viewSorteio.getEl().unmask();
+                }
+                
+                var info = result.infoRetornoOficiaisJustica;
+                var codigo = info.codigo;
+                var mensagem = info.mensagem;
+                
+                if(codigo == 0) { 
+                    var concurso = info.concurso;
+                    var sorteios = concurso.sorteios;
+
+                    var grid = Ext.ComponentQuery.query('#gridSorteio')[0];
+                    grid.setTitle('Sorteios para procedimento ' + concursoRecord.get('numProcesso') + ' - clique na célula para alterar informação');
+                    var gridStore = grid.getStore();
+                    gridStore.removeAll();
+                    
+                    Ext.Array.each(sorteios, function(sorteio, idx){
+                        var dtIni = Ext.Date.parse(sorteio.dhSorteio, 'd/m/Y H:i:s');
+                        
+                        var row = {sorteioId: sorteio.sorteioId, 
+                                   concursoId: concurso.concursoId,
+                                   matriculaUsuario: sorteio.matriculaUsuario,
+                                   nomeUsuario: sorteio.nomeUsuario,
+                                   dhSorteio: Ext.Date.format(dtIni, 'd/m/Y H:i:s'),
+                                   flValido: sorteio.flValido,
+                                   flPublicado: sorteio.flPublicado
+                                   };
+                        gridStore.add(row);                
+                    });
+                } else {
+                    Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro: ' + mensagem, Ext.Msg.ERROR, function(){});                                
+                }
+            }, executaChamadaError: function(obj){
+                if(viewSorteio) {
+                    viewSorteio.getEl().unmask();
+                }
+                Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao executar chamada', Ext.Msg.ERROR, function(){});                        
+            }
+        });                
+    }
+   
+});

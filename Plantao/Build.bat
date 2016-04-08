@@ -1,0 +1,1 @@
+"C:\Apps\sencha touch\Cmd\Sencha\Cmd\5.1.3.61\sencha.exe" app build testing

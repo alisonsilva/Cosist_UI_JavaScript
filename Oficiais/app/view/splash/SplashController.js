@@ -1,0 +1,71 @@
+Ext.define('Oficiais.view.splash.SplashController', {
+    extend: 'Ext.app.ViewController',
+    alias: 'controller.splashcontroller',
+    requires: [
+        'Ext.window.Window'    
+    ],
+
+    onRender: function(container, eOpts) {
+        var concursoId = localStorage.getItem("concursoId");
+        if(!concursoId) {
+            Oficiais.util.DeviceUtil.showAlertaConfirma('Info', 'Não há concurso em andamento', Ext.Msg.INFO, function(){}); 
+        } else {
+            container.getEl().mask();
+            Oficiais.util.JsonPUtil.executaChamada(
+                'https://tjdf199.tjdft.jus.br/cosist/servicos/oficiaisjustica/dadosbasicos/concursoporid/' + concursoId,
+                null,
+                {executaChamadaSuccess : function(result, obj){
+                    container.getEl().unmask();
+                    var info = result.infoRetornoOficiaisJustica;
+                    var codigo = info.codigo;
+                    var mensagem = info.mensagem;
+                    
+                    if(codigo == 0) { 
+                        var concurso = info.concurso;
+                        var numProcesso = concurso.numProcesso;
+                        var qtdVagas = concurso.qtdVagas;
+                        var dtIni = concurso.dataInicioInscricao;
+                        var dtFim = concurso.dataFimInscricao;
+                        var dtResult = concurso.dataResultadoProvisorio;
+						if(!dtResult) {
+							dtResult = 'Não informado';
+						}
+						
+						var dtFimDate = Ext.Date.parse(dtFim, 'd/m/Y');
+						var dt2 = Ext.Date.add(dtFimDate, Ext.Date.DAY, -1);
+						var dtFimFinal = Ext.Date.format(dt2, 'd/m/Y');
+                        
+                       var htmlOverlay = "<div style=\'width: 95%; margin: auto; padding: 0; display: table; border: 0px;  font-size: 13px; text-align: left; color: #666666; padding-left: 5px; padding-bottom: 5px; line-height: 92%;\'> "
+                    +"    <div style=\'display: table-row; \'> "
+                    +"        <div style=\'width: 30%; padding-left: 0.5em; padding-top: 0.7em; display: table-cell;  font-size: 13px; color: #666666;\'>Procedimento</div>"
+                    +"        <div style=\'padding-left: 0.5em; padding-right: 0.5em; padding-top: 0.7em;  display: table-cell;  font-size: 14px; color: #330066;\'><b>"+ numProcesso +"</b></div>"
+                    +"    </div> "
+                    +"    <div style=\'display: table-row; \'> "
+                    +"        <div style=\'width: 30%; padding-left: 0.5em; padding-top: 0.7em; display: table-cell;  font-size: 13px; color: #666666;\'>Vagas</div>"
+                    +"        <div style=\'padding-left: 0.5em; padding-right: 0.5em; padding-top: 0.7em;  display: table-cell;  font-size: 14px; color: #330066;\'><b>"+ qtdVagas +"</b></div>"
+                    +"    </div> "
+                    +"    <div style=\'display: table-row; \'> "
+                    +"        <div style=\'width: 30%; padding-left: 0.5em; padding-top: 0.7em; display: table-cell;  font-size: 13px; color: #666666;\'>Período</div>"
+                    +"        <div style=\'padding-left: 0.5em; padding-right: 0.5em; padding-top: 0.7em;  display: table-cell;  font-size: 14px; color: #330066;\'><b>"+ dtIni + ' - ' + dtFimFinal +"</b></div>"
+                    +"    </div> "
+                    +"    <div style=\'display: table-row; \'> "
+                    +"        <div style=\'width: 30%; padding-left: 0.5em; padding-top: 0.7em; display: table-cell;  font-size: 13px; color: #666666;\'>Resultado provisório</div>"
+                    +"        <div style=\'padding-left: 0.5em; padding-right: 0.5em; padding-top: 0.7em;  display: table-cell;  font-size: 14px; color: #330066;\'><b>"+ dtResult +"</b></div>"
+                    +"    </div> "
+                    +"</div>";   
+                        
+                        container.setHtml(htmlOverlay);
+                        
+                        
+                    } else {
+                        Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', mensagem, Ext.Msg.ERROR, function(){});                                
+                    }
+                }, executaChamadaError: function(obj){
+                    container.getEl().unmask();
+                    Oficiais.util.DeviceUtil.showAlertaConfirma('Erro', 'Erro ao executar chamada', Ext.Msg.ERROR, function(){});                        
+                }
+            });           
+        }
+    }    
+   
+});
