@@ -1,4 +1,4 @@
-# User interface developed using Ext JS (https://www.sencha.com/products/extjs/#overview)
+# User interface developed using Ext JS - [see](https://www.sencha.com/products/extjs/#overview)
 
 These are JavaScript User Interface developed using Sencha Ext JS 4 to make the front end for two management systems:
 1. Oficiais
