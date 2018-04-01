@@ -1,4 +1,4 @@
-# Cosist_UI_JavaScript
+# User interface developed using Ext JS (https://www.sencha.com/products/extjs/#overview)
 
 These are JavaScript User Interface developed using Sencha Ext JS 4 to make the front end for two management systems:
 1. Oficiais
